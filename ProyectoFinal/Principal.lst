@@ -1,0 +1,199 @@
+     1                                 %line 1+1 Principal.asm
+     2                                 [section .data]
+     3                                 
+     4                                  SYS_exit equ 60
+     5                                  SYS_read equ 0
+     6                                  SYS_open equ 2
+     7                                  SYS_close equ 3
+     8                                  O_RDONLY equ 0
+     9                                  BUFF_SIZE equ 255
+    10                                 
+    11 00000000 2E230C010C2C041854-     matrixFile db 46, 35, 12, 1, 12, 44, 4, 24, 84, 3, 13
+    12 00000000 030D               
+    13 0000000B 244E6111402F551C40-     db 36, 78, 97, 17, 64, 47, 85, 28, 64, 22, 74
+    14 0000000B 164A               
+    15 00000016 564D25271E44594227-     db 86, 77, 37, 39, 30, 68, 89, 66, 39, 15, 25
+    16 00000016 0F19               
+    17 00000021 2B2D115B5B5253342D-     db 43, 45, 17, 91, 91, 82, 83, 52, 45, 29, 23
+    18 00000021 1D17               
+    19 0000002C 2E220634520831410D-     db 46, 34, 6, 52, 82, 8, 49, 65, 13, 13, 35
+    20 0000002C 0D23               
+    21 00000037 074E052A4555450618-     db 7, 78, 5, 42, 69, 85, 69, 6, 24, 41, 40
+    22 00000037 2928               
+    23 00000042 5312193321442F0704-     db 83, 18, 25, 51, 33, 68, 47, 7, 4, 41, 66
+    24 00000042 2942               
+    25 0000004D 63593C04050E59161C-     db 99, 89, 60, 4, 5, 14, 89, 22, 28, 18, 59
+    26 0000004D 123B               
+    27 00000058 5D04434A2A3C31213E-     db 93, 4, 67, 74, 42, 60, 49, 33, 62, 83, 82
+    28 00000058 5352               
+    29 00000063 4D1F284D614836471A-     db 77, 31, 40, 77, 97, 72, 54, 71, 26, 45, 82
+    30 00000063 2D52               
+    31 0000006E 4A5817615B154B5224-     db 74, 88, 23, 97, 91, 21, 75, 82, 36, 24, 15
+    32 0000006E 180F               
+    33 00000079 0000                    numRows dw 0
+    34 0000007B 0000                    numCols dw 0
+    35 0000007D 79                      matrix_length db 121
+    36 0000007E 00<rept>                readBuffer times BUFF_SIZE db 0
+    37                                 
+    38                                 
+    39 0000017D 53656C65637420616E-     menuPrompt db "Select an operation:",
+    40 0000017D 206F7065726174696F-
+    41 0000017D 6E3A               
+    42 00000191 31202D2043616C6375-     menuOptions db "1 - Calculate mean", 10, 0
+    43 00000191 6C617465206D65616E-
+    44 00000191 0A00               
+    45 000001A5 32202D2043616C6375-     db "2 - Calculate median", 10, 0
+    46 000001A5 6C617465206D656469-
+    47 000001A5 616E0A00           
+    48 000001BB 33202D2043616C6375-     db "3 - Calculate mode", 10, 0
+    49 000001BB 6C617465206D6F6465-
+    50 000001BB 0A00               
+    51 000001CF 34202D2043616C6375-     db "4 - Calculate standard deviation", 10, 0
+    52 000001CF 6C617465207374616E-
+    53 000001CF 646172642064657669-
+    54 000001CF 6174696F6E0A00     
+    55 000001F1 35202D202043616C63-     db "5 -  Calculate variance", 10, 0
+    56 000001F1 756C61746520766172-
+    57 000001F1 69616E63650A00     
+    58 0000020A 36202D20457869740A-     db "6 - Exit", 10, 0
+    59 0000020A 00                 
+    60                                 menuSize equ $ - menuOptions
+    61                                 
+    62                                 
+    63 00000214 496E76616C6964206F-     invalidOptionMsg db "Invalid option! Please try again.", 0
+    64 00000214 7074696F6E2120506C-
+    65 00000214 656173652074727920-
+    66 00000214 616761696E2E00     
+    67 00000236 0000000000000000        fileDesc dq 0
+    68                                 
+    69                                 [section .text]
+    70                                 [global _start]
+    71                                 
+    72                                 _start:
+    73                                 
+    74 00000000 E83A000000              call readMatrixFromFile
+    75                                 
+    76                                 
+    77                                 mainLoop:
+    78                                 
+    79 00000005 E8A1000000              call printMenu
+    80                                 
+    81                                 
+    82 0000000A E8D9000000              call readInt
+    83 0000000F 83F801                  cmp eax, 1
+    84 00000012 7C25                    jl invalidOption
+    85 00000014 83F806                  cmp eax, 6
+    86 00000017 7F20                    jg invalidOption
+    87                                 
+    88                                 
+    89 00000019 83F801                  cmp eax, 1
+    90 0000001C 0F847A000000            je calculateMean
+    91 00000022 83F802                  cmp eax, 2
+    92 00000025 747A                    je calculateMedian
+    93 00000027 83F803                  cmp eax, 3
+    94 0000002A 7476                    je calculateMode
+    95 0000002C 83F804                  cmp eax, 4
+    96 0000002F 7472                    je calculateStdDev
+    97 00000031 83F805                  cmp eax, 5
+    98 00000034 746E                    je calculateVariance
+    99 00000036 83F806                  cmp eax, 6
+   100 00000039 746A                    je exitProgram
+   101                                 
+   102                                 
+   103                                 invalidOption:
+   104                                 
+   105 0000003B 48C7C7[00000000]        mov rdi, invalidOptionMsg
+   106 00000042 EBBF                    jmp mainLoop
+   107                                 
+   108                                 readMatrixFromFile:
+   109                                 
+   110 00000044 48C7C002000000          mov rax, SYS_open
+   111 0000004B 48C7C7[00000000]        mov rdi, matrixFile
+   112 00000052 48C7C600000000          mov rsi, O_RDONLY
+   113 00000059 0F05                    syscall
+   114                                 
+   115                                 
+   116 0000005B 4883F800                cmp rax, 0
+   117 0000005F 7C3D                    jl errorOpenFile
+   118 00000061 48890425[00000000]      mov [fileDesc], rax
+   119                                 
+   120                                 
+   121 00000069 48C7C000000000          mov rax, SYS_read
+   122 00000070 488B3C25[00000000]      mov rdi, [fileDesc]
+   123 00000078 48C7C6[00000000]        mov rsi, readBuffer
+   124 0000007F 48C7C2FF000000          mov rdx, BUFF_SIZE
+   125 00000086 0F05                    syscall
+   126                                 
+   127                                 
+   128 00000088 4883F800                cmp rax, 0
+   129 0000008C 7C11                    jl errorReadFile
+   130                                 
+   131                                 
+   132                                 
+   133                                 
+   134 0000008E 48C7C003000000          mov rax, SYS_close
+   135 00000095 488B3C25[00000000]      mov rdi, [fileDesc]
+   136 0000009D 0F05                    syscall
+   137                                 
+   138 0000009F C3                      ret
+   139                                 
+   140                                 errorOpenFile:
+   141                                 
+   142 000000A0 C3                      ret
+   143                                 
+   144                                 errorReadFile:
+   145                                 
+   146 000000A1 C3                      ret
+   147                                 
+   148                                 
+   149                                 calculateMean:
+   150                                 
+   151 000000A2 C3                      ret
+   152                                 
+   153                                 calculateMedian:
+   154                                 
+   155 000000A3 C3                      ret
+   156                                 
+   157                                 calculateMode:
+   158                                 
+   159 000000A4 C3                      ret
+   160                                 
+   161                                 calculateStdDev:
+   162                                 
+   163 000000A5 C3                      ret
+   164                                 
+   165                                 calculateVariance:
+   166                                 
+   167 000000A6 C3                      ret
+   168                                 
+   169                                 
+   170                                 
+   171                                 exitProgram:
+   172                                 
+   173 000000A7 B83C000000              mov eax, SYS_exit
+   174 000000AC 31FF                    xor edi, edi
+   175 000000AE 0F05                    syscall
+   176                                 
+   177                                 printMenu:
+   178                                 
+   179 000000B0 48C7C7[00000000]        mov rdi, menuOptions
+   180 000000B7 4883EF01                sub rdi, 1
+   181                                  len_loop:
+   182 000000BB 48FFC7                  inc rdi
+   183 000000BE 803F00                  cmp byte [rdi], 0
+   184 000000C1 75F6                    jne len_loop
+   185 000000C3 4881EF[00000000]        sub rdi, menuOptions
+   186                                 
+   187                                 
+   188 000000CA 48C7C001000000          mov rax, 1
+   189 000000D1 48C7C701000000          mov rdi, 1
+   190 000000D8 48C7C6[00000000]        mov rsi, menuOptions
+   191 000000DF 48BA83000000000000-     mov rdx, menuSize
+   192 000000DF 00                 
+   193 000000E9 0F05                    syscall
+   194                                 
+   195 000000EB EBB8                    jmp exitProgram
+   196                                 
+   197                                 readInt:
+   198                                 
+   199                                 
