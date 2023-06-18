@@ -8,7 +8,7 @@
      8                                  O_RDONLY equ 0
      9                                  BUFF_SIZE equ 255
     10                                 
-    11 00000000 2E230C010C2C041854-     matrixFile db 46, 35, 12, 1, 12, 44, 4, 24, 84, 3, 13
+    11 00000000 2E230C010C2C041854-     matrix db 46, 35, 12, 1, 12, 44, 4, 24, 84, 3, 13
     12 00000000 030D               
     13 0000000B 244E6111402F551C40-     db 36, 78, 97, 17, 64, 47, 85, 28, 64, 22, 74
     14 0000000B 164A               
@@ -30,170 +30,555 @@
     30 00000063 2D52               
     31 0000006E 4A5817615B154B5224-     db 74, 88, 23, 97, 91, 21, 75, 82, 36, 24, 15
     32 0000006E 180F               
-    33 00000079 0000                    numRows dw 0
-    34 0000007B 0000                    numCols dw 0
-    35 0000007D 79                      matrix_length db 121
-    36 0000007E 00<rept>                readBuffer times BUFF_SIZE db 0
-    37                                 
+    33                                 
+    34 00000079 0B00                    numRows dw 11
+    35 0000007B 0B00                    numCols dw 11
+    36 0000007D 79                      matrix_length db 121
+    37 0000007E 00<rept>                readBuffer times BUFF_SIZE db 0
     38                                 
-    39 0000017D 53656C65637420616E-     menuPrompt db "Select an operation:",
-    40 0000017D 206F7065726174696F-
-    41 0000017D 6E3A               
-    42 00000191 31202D2043616C6375-     menuOptions db "1 - Calculate mean", 10, 0
-    43 00000191 6C617465206D65616E-
-    44 00000191 0A00               
-    45 000001A5 32202D2043616C6375-     db "2 - Calculate median", 10, 0
-    46 000001A5 6C617465206D656469-
-    47 000001A5 616E0A00           
-    48 000001BB 33202D2043616C6375-     db "3 - Calculate mode", 10, 0
-    49 000001BB 6C617465206D6F6465-
-    50 000001BB 0A00               
-    51 000001CF 34202D2043616C6375-     db "4 - Calculate standard deviation", 10, 0
-    52 000001CF 6C617465207374616E-
-    53 000001CF 646172642064657669-
-    54 000001CF 6174696F6E0A00     
-    55 000001F1 35202D202043616C63-     db "5 -  Calculate variance", 10, 0
-    56 000001F1 756C61746520766172-
-    57 000001F1 69616E63650A00     
-    58 0000020A 36202D20457869740A-     db "6 - Exit", 10, 0
-    59 0000020A 00                 
-    60                                 menuSize equ $ - menuOptions
-    61                                 
+    39                                 
+    40 0000017D 53656C65637420616E-     menuPrompt db "Select an operation:",
+    41 0000017D 206F7065726174696F-
+    42 0000017D 6E3A               
+    43 00000191 31202D2043616C6375-     menuOptions db "1 - Calculate mean", 10, 0
+    44 00000191 6C617465206D65616E-
+    45 00000191 0A00               
+    46 000001A5 32202D2043616C6375-     db "2 - Calculate median", 10, 0
+    47 000001A5 6C617465206D656469-
+    48 000001A5 616E0A00           
+    49 000001BB 33202D2043616C6375-     db "3 - Calculate mode", 10, 0
+    50 000001BB 6C617465206D6F6465-
+    51 000001BB 0A00               
+    52 000001CF 34202D2043616C6375-     db "4 - Calculate standard deviation", 10, 0
+    53 000001CF 6C617465207374616E-
+    54 000001CF 646172642064657669-
+    55 000001CF 6174696F6E0A00     
+    56 000001F1 35202D202043616C63-     db "5 -  Calculate variance", 10, 0
+    57 000001F1 756C61746520766172-
+    58 000001F1 69616E63650A00     
+    59 0000020A 36202D20457869740A-     db "6 - Exit", 10, 0
+    60 0000020A 00                 
+    61                                 menuSize equ $ - menuOptions
     62                                 
-    63 00000214 496E76616C6964206F-     invalidOptionMsg db "Invalid option! Please try again.", 0
-    64 00000214 7074696F6E2120506C-
-    65 00000214 656173652074727920-
-    66 00000214 616761696E2E00     
-    67 00000236 0000000000000000        fileDesc dq 0
-    68                                 
-    69                                 [section .text]
-    70                                 [global _start]
-    71                                 
-    72                                 _start:
-    73                                 
-    74 00000000 E83A000000              call readMatrixFromFile
-    75                                 
-    76                                 
-    77                                 mainLoop:
-    78                                 
-    79 00000005 E8A1000000              call printMenu
+    63                                 
+    64 00000214 496E76616C6964206F-     invalidOptionMsg db "Invalid option! Please try again.", 0
+    65 00000214 7074696F6E2120506C-
+    66 00000214 656173652074727920-
+    67 00000214 616761696E2E00     
+    68 00000236 0000000000000000        fileDesc dq 0
+    69                                 
+    70                                 [section .bss]
+    71 00000000 <gap>                   printBuf resb 11
+    72 0000000B <gap>                   counts resb 256
+    73 0000010B <gap>                   buffer resb 10
+    74                                 
+    75                                 [section .text]
+    76                                 [global _start]
+    77                                 
+    78                                 _start:
+    79                                 
     80                                 
     81                                 
-    82 0000000A E8D9000000              call readInt
-    83 0000000F 83F801                  cmp eax, 1
-    84 00000012 7C25                    jl invalidOption
-    85 00000014 83F806                  cmp eax, 6
-    86 00000017 7F20                    jg invalidOption
-    87                                 
-    88                                 
-    89 00000019 83F801                  cmp eax, 1
-    90 0000001C 0F847A000000            je calculateMean
-    91 00000022 83F802                  cmp eax, 2
-    92 00000025 747A                    je calculateMedian
-    93 00000027 83F803                  cmp eax, 3
-    94 0000002A 7476                    je calculateMode
-    95 0000002C 83F804                  cmp eax, 4
-    96 0000002F 7472                    je calculateStdDev
-    97 00000031 83F805                  cmp eax, 5
-    98 00000034 746E                    je calculateVariance
-    99 00000036 83F806                  cmp eax, 6
-   100 00000039 746A                    je exitProgram
-   101                                 
-   102                                 
-   103                                 invalidOption:
-   104                                 
-   105 0000003B 48C7C7[00000000]        mov rdi, invalidOptionMsg
-   106 00000042 EBBF                    jmp mainLoop
+    82                                 mainLoop:
+    83                                 
+    84 00000000 E872020000              call printMenu
+    85                                 
+    86                                 
+    87 00000005 E8AA020000              call readInt
+    88 0000000A 83F801                  cmp eax, 1
+    89 0000000D 7C31                    jl invalidOption
+    90 0000000F 83F806                  cmp eax, 6
+    91 00000012 7F2C                    jg invalidOption
+    92                                 
+    93                                 
+    94 00000014 83F801                  cmp eax, 1
+    95 00000017 7430                    je calculateMean
+    96 00000019 83F802                  cmp eax, 2
+    97 0000001C 7469                    je calculateMedian
+    98 0000001E 83F803                  cmp eax, 3
+    99 00000021 0F841A010000            je calculateMode
+   100 00000027 83F804                  cmp eax, 4
+   101 0000002A 0F8475010000            je calculateStdDev
+   102 00000030 83F805                  cmp eax, 5
+   103 00000033 0F84D0010000            je calculateVariance
+   104 00000039 83F806                  cmp eax, 6
+   105 0000003C 0F842B020000            je exitProgram
+   106                                 
    107                                 
-   108                                 readMatrixFromFile:
+   108                                 invalidOption:
    109                                 
-   110 00000044 48C7C002000000          mov rax, SYS_open
-   111 0000004B 48C7C7[00000000]        mov rdi, matrixFile
-   112 00000052 48C7C600000000          mov rsi, O_RDONLY
-   113 00000059 0F05                    syscall
+   110 00000042 48C7C7[00000000]        mov rdi, invalidOptionMsg
+   111 00000049 EBB3                    jmp mainLoop
+   112                                 
+   113                                 
    114                                 
-   115                                 
-   116 0000005B 4883F800                cmp rax, 0
-   117 0000005F 7C3D                    jl errorOpenFile
-   118 00000061 48890425[00000000]      mov [fileDesc], rax
+   115                                 calculateMean:
+   116                                 
+   117 0000004B 48C7C7[00000000]        mov rdi, matrix
+   118                                 
    119                                 
-   120                                 
-   121 00000069 48C7C000000000          mov rax, SYS_read
-   122 00000070 488B3C25[00000000]      mov rdi, [fileDesc]
-   123 00000078 48C7C6[00000000]        mov rsi, readBuffer
-   124 0000007F 48C7C2FF000000          mov rdx, BUFF_SIZE
-   125 00000086 0F05                    syscall
+   120 00000052 B9[00000000]            mov ecx, matrix_length
+   121                                 
+   122                                 
+   123 00000057 31F6                    xor esi, esi
+   124                                 
+   125                                 calculateMean_loop:
    126                                 
-   127                                 
-   128 00000088 4883F800                cmp rax, 0
-   129 0000008C 7C11                    jl errorReadFile
-   130                                 
+   127 00000059 31C0                    xor eax, eax
+   128                                 
+   129                                 
+   130 0000005B 0FB71425[00000000]     movzx edx, word [numCols]
    131                                 
    132                                 
-   133                                 
-   134 0000008E 48C7C003000000          mov rax, SYS_close
-   135 00000095 488B3C25[00000000]      mov rdi, [fileDesc]
-   136 0000009D 0F05                    syscall
+   133                                 calculateMean_inner_loop:
+   134                                 
+   135 00000063 0FB61F                  movzx ebx, byte [rdi]
+   136 00000066 01D8                    add eax, ebx
    137                                 
-   138 0000009F C3                      ret
-   139                                 
-   140                                 errorOpenFile:
+   138                                 
+   139 00000068 48FFC7                  inc rdi
+   140                                 
    141                                 
-   142 000000A0 C3                      ret
+   142 0000006B FFCA                    dec edx
    143                                 
-   144                                 errorReadFile:
-   145                                 
-   146 000000A1 C3                      ret
+   144                                 
+   145 0000006D 75F2                    jnz calculateMean_inner_loop
+   146                                 
    147                                 
    148                                 
-   149                                 calculateMean:
+   149                                 
    150                                 
-   151 000000A2 C3                      ret
-   152                                 
-   153                                 calculateMedian:
+   151 0000006F 0FB70C25[00000000]      movzx ecx, word [numCols]
+   152 00000077 99                      cdq
+   153 00000078 F7F9                    idiv ecx
    154                                 
-   155 000000A3 C3                      ret
+   155                                 
    156                                 
-   157                                 calculateMode:
+   157                                 
    158                                 
-   159 000000A4 C3                      ret
+   159 0000007A FFC6                    inc esi
    160                                 
-   161                                 calculateStdDev:
-   162                                 
-   163 000000A5 C3                      ret
-   164                                 
-   165                                 calculateVariance:
-   166                                 
-   167 000000A6 C3                      ret
+   161                                 
+   162 0000007C 0FB71425[00000000]      movzx edx, word [numRows]
+   163 00000084 39D6                    cmp esi, edx
+   164 00000086 7CCF                    jl calculateMean_loop
+   165                                 
+   166 00000088 C3                      ret
+   167                                 
    168                                 
    169                                 
-   170                                 
-   171                                 exitProgram:
-   172                                 
-   173 000000A7 B83C000000              mov eax, SYS_exit
-   174 000000AC 31FF                    xor edi, edi
-   175 000000AE 0F05                    syscall
+   170                                 calculateMedian:
+   171                                 
+   172 00000089 48C7C7[00000000]        mov rdi, matrix
+   173                                 
+   174                                 
+   175 00000090 31F6                    xor esi, esi
    176                                 
-   177                                 printMenu:
+   177                                 calculateMedian_loop:
    178                                 
-   179 000000B0 48C7C7[00000000]        mov rdi, menuOptions
-   180 000000B7 4883EF01                sub rdi, 1
-   181                                  len_loop:
-   182 000000BB 48FFC7                  inc rdi
-   183 000000BE 803F00                  cmp byte [rdi], 0
-   184 000000C1 75F6                    jne len_loop
-   185 000000C3 4881EF[00000000]        sub rdi, menuOptions
+   179 00000092 4889FA                  mov rdx, rdi
+   180                                 
+   181                                 
+   182                                  outerLoop:
+   183                                 
+   184 00000095 31DB                    xor ebx, ebx
+   185                                 
    186                                 
-   187                                 
-   188 000000CA 48C7C001000000          mov rax, 1
-   189 000000D1 48C7C701000000          mov rdi, 1
-   190 000000D8 48C7C6[00000000]        mov rsi, menuOptions
-   191 000000DF 48BA83000000000000-     mov rdx, menuSize
-   192 000000DF 00                 
-   193 000000E9 0F05                    syscall
+   187                                  innerLoop:
+   188                                 
+   189 00000097 0FB60A                  movzx ecx, byte [rdx]
+   190 0000009A 0FB64201                movzx eax, byte [rdx+1]
+   191                                 
+   192                                 
+   193 0000009E 39C1                    cmp ecx, eax
    194                                 
-   195 000000EB EBB8                    jmp exitProgram
-   196                                 
-   197                                 readInt:
-   198                                 
-   199                                 
+   195                                 
+   196 000000A0 7E08                    jle continueLoop
+   197                                 
+   198 000000A2 8802                    mov byte [rdx], al
+   199 000000A4 884A01                  mov byte [rdx+1], cl
+   200 000000A7 BB01000000              mov ebx, 1
+   201                                 
+   202                                  continueLoop:
+   203                                 
+   204 000000AC 48FFC2                  inc rdx
+   205                                 
+   206                                 
+   207 000000AF B8[00000000]            mov eax, numCols
+   208 000000B4 01F8                    add eax, edi
+   209 000000B6 FFC8                    dec eax
+   210 000000B8 39C2                    cmp edx, eax
+   211 000000BA 7CD9                    jl innerLoop
+   212                                 
+   213                                 
+   214 000000BC 83FB01                  cmp ebx, 1
+   215 000000BF 74D2                    je outerLoop
+   216                                 
+   217                                 
+   218                                 
+   219 000000C1 803C25[00000000]01      cmp byte [numCols], 1
+   220 000000C9 750D                    jne even
+   221                                 odd:
+   222                                 
+   223 000000CB B8[00000000]            mov eax, numCols
+   224 000000D0 D1E8                   shr eax, 1
+   225 000000D2 01F8                   add eax, edi
+   226 000000D4 670FB618               movzx ebx, byte [eax]
+   227                                 
+   228 000000D8 EB1D                    jmp printMedian
+   229                                 even:
+   230                                 
+   231 000000DA B8[00000000]            mov eax, numCols
+   232 000000DF D1E8                    shr eax, 1
+   233 000000E1 01F8                    add eax, edi
+   234 000000E3 670FB658FF              movzx ebx, byte [eax - 1]
+   235                                 
+   236 000000E8 B8[00000000]            mov eax, numCols
+   237 000000ED D1E8                    shr eax, 1
+   238 000000EF 01F8                    add eax, edi
+   239 000000F1 670FB608                movzx ecx, byte [eax]
+   240                                 
+   241 000000F5 01CB                    add ebx, ecx
+   242 000000F7 D1EB                    shr ebx, 1
+   243                                 
+   244                                 
+   245                                 printMedian:
+   246                                 
+   247 000000F9 BF[0A000000]            mov edi, printBuf + 10
+   248 000000FE 67C60700                mov byte [edi], 0
+   249 00000102 89D8                    mov eax, ebx
+   250                                 print_loop:
+   251 00000104 31D2                    xor edx, edx
+   252 00000106 B90A000000              mov ecx, 10
+   253 0000010B F7F1                    div ecx
+   254 0000010D 80C230                  add dl, "0"
+   255 00000110 FFCF                    dec edi
+   256 00000112 678817                  mov [edi], dl
+   257 00000115 85C0                    test eax, eax
+   258 00000117 75E9                    jnz print_loop
+   259                                 
+   260                                 
+   261 00000119 B801000000              mov eax, 1
+   262 0000011E BF01000000              mov edi, 1
+   263 00000123 89FE                    mov esi, edi
+   264 00000125 48C7C7[0A000000]        mov rdi, printBuf + 10
+   265 0000012C 4829F2                  sub rdx, rsi
+   266 0000012F 0F05                    syscall
+   267                                 
+   268                                 
+   269 00000131 4881C7[00000000]        add rdi, numCols
+   270                                 
+   271                                 
+   272 00000138 FFC6                    inc esi
+   273                                 
+   274                                 
+   275 0000013A 81FE[00000000]          cmp esi, numRows
+   276 00000140 0F8C46FFFFFF            jl calculateMedian_loop
+   277                                 
+   278 00000146 C3                      ret
+   279                                 
+   280                                 
+   281                                 
+   282                                 
+   283                                 calculateMode:
+   284                                 
+   285 00000147 48C7C7[00000000]        mov rdi, matrix
+   286                                 
+   287                                 
+   288 0000014E 31F6                    xor esi, esi
+   289                                 
+   290                                 calculateMode_loop:
+   291                                 
+   292                                 
+   293 00000150 BF[00000000]            mov edi, counts
+   294 00000155 B900010000              mov ecx, 256
+   295 0000015A 31C0                    xor eax, eax
+   296 0000015C F3AA                    rep stosb
+   297                                 
+   298                                 
+   299 0000015E 0FB71425[00000000]      movzx edx, word [numCols]
+   300                                 
+   301                                 
+   302 00000166 57                      push rdi
+   303                                 
+   304                                 calculateMode_inner_loop:
+   305                                 
+   306 00000167 0FB607                  movzx eax, byte [rdi]
+   307 0000016A FE80[00000000]          inc byte [counts + rax]
+   308                                 
+   309                                 
+   310 00000170 48FFC7                  inc rdi
+   311                                 
+   312                                 
+   313 00000173 FFCA                    dec edx
+   314                                 
+   315                                 
+   316 00000175 75EE                    jnz calculateMode_inner_loop
+   317                                 
+   318                                 
+   319                                 
+   320                                 
+   321                                 
+   322 00000177 31C0                    xor eax, eax
+   323 00000179 31DB                    xor ebx, ebx
+   324                                 
+   325                                 
+   326 0000017B B900010000              mov ecx, 256
+   327                                 
+   328                                 findMode_loop:
+   329                                 
+   330 00000180 673899[FFFFFFFF]        cmp byte [counts + ecx - 1], bl
+   331 00000187 7E09                    jle nextValue
+   332                                 
+   333                                 
+   334 00000189 88C8                    mov al, cl
+   335 0000018B FEC8                    dec al
+   336 0000018D 678A99[FFFFFFFF]        mov bl, byte [counts + ecx - 1]
+   337                                 
+   338                                 nextValue:
+   339                                 
+   340 00000194 FFC9                    dec ecx
+   341                                 
+   342                                 
+   343 00000196 75E6                    jnz findMode_loop
+   344                                 
+   345                                 
+   346                                 
+   347                                 
+   348                                 
+   349 00000198 5F                      pop rdi
+   350                                 
+   351                                 
+   352 00000199 4881C7[00000000]        add rdi, numCols
+   353                                 
+   354                                 
+   355 000001A0 FFC6                    inc esi
+   356                                 
+   357                                 
+   358 000001A2 81FE[00000000]          cmp esi, numRows
+   359 000001A8 7CA4                    jl calculateMode_loop
+   360                                 
+   361 000001AA C3                      ret
+   362                                 
+   363                                 
+   364                                 
+   365                                 calculateStdDev:
+   366                                 
+   367 000001AB 48C7C7[00000000]        mov rdi, matrix
+   368                                 
+   369                                 
+   370 000001B2 31F6                    xor esi, esi
+   371                                 
+   372                                 calculateStdDev_loop:
+   373                                 
+   374 000001B4 31C0                    xor eax, eax
+   375                                 
+   376                                 
+   377 000001B6 0FB70C25[00000000]      movzx ecx, word [numCols]
+   378                                 
+   379                                 calculateStdDev_inner_loop1:
+   380                                 
+   381 000001BE 0FB61F                  movzx ebx, byte [rdi]
+   382 000001C1 01D8                    add eax, ebx
+   383                                 
+   384                                 
+   385 000001C3 48FFC7                  inc rdi
+   386                                 
+   387                                 
+   388 000001C6 FFC9                    dec ecx
+   389                                 
+   390                                 
+   391 000001C8 75F2                    jnz calculateStdDev_inner_loop1
+   392                                 
+   393                                 
+   394 000001CA 0FB70C25[00000000]      movzx ecx, word [numCols]
+   395 000001D2 99                      cdq
+   396 000001D3 F7F9                    idiv ecx
+   397                                 
+   398                                 
+   399 000001D5 89C3                    mov ebx, eax
+   400                                 
+   401                                 
+   402 000001D7 31C0                    xor eax, eax
+   403                                 
+   404                                 
+   405 000001D9 4881EF[00000000]        sub rdi, numCols
+   406                                 
+   407                                 
+   408 000001E0 0FB70C25[00000000]      movzx ecx, word [numCols]
+   409                                 
+   410                                 calculateStdDev_inner_loop2:
+   411                                 
+   412 000001E8 0FB617                  movzx edx, byte [rdi]
+   413 000001EB 29DA                    sub edx, ebx
+   414 000001ED 0FAFD2                  imul edx, edx
+   415 000001F0 01D0                    add eax, edx
+   416                                 
+   417                                 
+   418 000001F2 48FFC7                  inc rdi
+   419                                 
+   420                                 
+   421 000001F5 FFC9                    dec ecx
+   422                                 
+   423                                 
+   424 000001F7 75ED                    jnz calculateStdDev_inner_loop2
+   425                                 
+   426                                 
+   427                                 
+   428                                 
+   429                                 
+   430 000001F9 0FB70C25[00000000]      movzx ecx, word [numCols]
+   431 00000201 99                      cdq
+   432 00000202 F7F9                    idiv ecx
+   433                                 
+   434                                 
+   435                                 
+   436                                 
+   437                                 
+   438                                 
+   439                                 
+   440 00000204 FFC6                    inc esi
+   441                                 
+   442                                 
+   443 00000206 81FE[00000000]          cmp esi, numRows
+   444 0000020C 7CA4                    jl calculateStdDev_loop
+   445                                 
+   446 0000020E C3                      ret
+   447                                 
+   448                                 
+   449                                 
+   450                                 calculateVariance:
+   451                                 
+   452 0000020F 48C7C7[00000000]        mov rdi, matrix
+   453                                 
+   454                                 
+   455 00000216 31F6                    xor esi, esi
+   456                                 
+   457                                 calculateVariance_loop:
+   458                                 
+   459 00000218 31C0                    xor eax, eax
+   460                                 
+   461                                 
+   462 0000021A 0FB70C25[00000000]      movzx ecx, word [numCols]
+   463                                 
+   464                                 calculateVariance_inner_loop1:
+   465                                 
+   466 00000222 0FB61F                  movzx ebx, byte [rdi]
+   467 00000225 01D8                    add eax, ebx
+   468                                 
+   469                                 
+   470 00000227 48FFC7                  inc rdi
+   471                                 
+   472                                 
+   473 0000022A FFC9                    dec ecx
+   474                                 
+   475                                 
+   476 0000022C 75F2                    jnz calculateVariance_inner_loop1
+   477                                 
+   478                                 
+   479 0000022E 0FB70C25[00000000]      movzx ecx, word [numCols]
+   480 00000236 99                      cdq
+   481 00000237 F7F9                    idiv ecx
+   482                                 
+   483                                 
+   484 00000239 89C3                    mov ebx, eax
+   485                                 
+   486                                 
+   487 0000023B 31C0                    xor eax, eax
+   488                                 
+   489                                 
+   490 0000023D 4881EF[00000000]        sub rdi, numCols
+   491                                 
+   492                                 
+   493 00000244 0FB70C25[00000000]      movzx ecx, word [numCols]
+   494                                 
+   495                                 calculateVariance_inner_loop2:
+   496                                 
+   497 0000024C 0FB617                  movzx edx, byte [rdi]
+   498 0000024F 29DA                    sub edx, ebx
+   499 00000251 0FAFD2                  imul edx, edx
+   500 00000254 01D0                    add eax, edx
+   501                                 
+   502                                 
+   503 00000256 48FFC7                  inc rdi
+   504                                 
+   505                                 
+   506 00000259 FFC9                    dec ecx
+   507                                 
+   508                                 
+   509 0000025B 75ED                    jnz calculateVariance_inner_loop2
+   510                                 
+   511                                 
+   512                                 
+   513                                 
+   514                                 
+   515 0000025D 0FB70C25[00000000]      movzx ecx, word [numCols]
+   516 00000265 99                      cdq
+   517 00000266 F7F9                    idiv ecx
+   518                                 
+   519                                 
+   520                                 
+   521                                 
+   522 00000268 FFC6                    inc esi
+   523                                 
+   524                                 
+   525 0000026A 81FE[00000000]          cmp esi, numRows
+   526 00000270 7CA4                    jl calculateVariance_loop
+   527                                 
+   528 00000272 C3                      ret
+   529                                 
+   530                                 
+   531                                 
+   532                                 
+   533                                 
+   534                                 
+   535                                 exitProgram:
+   536                                 
+   537 00000273 B83C000000              mov eax, SYS_exit
+   538 00000278 31FF                    xor edi, edi
+   539 0000027A 0F05                    syscall
+   540                                 
+   541                                 printMenu:
+   542                                 
+   543 0000027C 48C7C7[00000000]        mov rdi, menuOptions
+   544 00000283 4883EF01                sub rdi, 1
+   545                                  len_loop:
+   546 00000287 48FFC7                  inc rdi
+   547 0000028A 803F00                  cmp byte [rdi], 0
+   548 0000028D 75F6                    jne len_loop
+   549 0000028F 4881EF[00000000]        sub rdi, menuOptions
+   550                                 
+   551                                 
+   552 00000296 48C7C001000000          mov rax, 1
+   553 0000029D 48C7C701000000          mov rdi, 1
+   554 000002A4 48C7C6[00000000]        mov rsi, menuOptions
+   555 000002AB 48BA83000000000000-     mov rdx, menuSize
+   556 000002AB 00                 
+   557 000002B5 0F05                    syscall
+   558                                 
+   559 000002B7 EBB8                    jmp exitProgram
+   560                                 
+   561                                 readInt:
+   562                                 
+   563 000002B9 B800000000              mov eax, 0
+   564 000002BE BF00000000              mov edi, 0
+   565 000002C3 48C7C6[00000000]        mov rsi, buffer
+   566 000002CA 48C7C20A000000          mov rdx, 10
+   567 000002D1 0F05                    syscall
+   568                                 
+   569                                 
+   570 000002D3 48C7C7[00000000]        mov rdi, buffer
+   571 000002DA 31C0                    xor eax, eax
+   572                                 
+   573                                 readInt_loop:
+   574 000002DC 0FB61F                  movzx ebx, byte [rdi]
+   575 000002DF 80FB0A                  cmp bl, 0A
+   576 000002E2 740B                    je readInt_done
+   577 000002E4 83EB30                  sub ebx, '0'
+   578 000002E7 6BC00A                  imul eax, 10
+   579 000002EA 01D8                    add eax, ebx
+   580 000002EC 48FFC7                  inc rdi
+   581 000002EF EBE9                    jmp readInt_loop
+   582                                 
+   583                                 readInt_done:
+   584 000002F1 C3                      ret
